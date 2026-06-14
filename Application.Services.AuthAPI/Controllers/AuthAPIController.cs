@@ -133,10 +133,10 @@ namespace Application.Services.AuthAPI.Controllers
             return Ok(_response);
         }
 
-        [HttpGet("getusers")]
-        public async Task<IActionResult> GetUsers([FromQuery] string role)
+        [HttpPost("getusers")]
+        public async Task<IActionResult> GetUsers([FromBody] string[]? roles)
         {
-            var users = await _authService.GetUsers(role);
+            var users = await _authService.GetUsers(roles);
             if (users == null || !users.Any())
             {
                 _response.Success = false;
@@ -158,6 +158,21 @@ namespace Application.Services.AuthAPI.Controllers
                 return Ok(_response);
             }
             _response.Result = user;
+            return Ok(_response);
+        }
+
+        [HttpPut("updateuser")]
+        public async Task<IActionResult> UpdateUser([FromBody] UserDto model)
+        {
+            var errorMessage = await _authService.UpdateUser(model);
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                _response.Success = false;
+                _response.Message = errorMessage;
+                return Ok(_response);
+            }
+            _response.Result = model.Id;
+            _response.Message = "Successfully Updated User";
             return Ok(_response);
         }
     }

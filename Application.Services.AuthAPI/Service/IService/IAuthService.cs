@@ -9,8 +9,9 @@ namespace Application.Services.AuthAPI.Service.IService
         Task<LoginResponseDto> Login(LoginRequestDto loginRequestDto);
         Task<bool> AssignRole(string email, string roleName);
         Task<LoginResponseDto> ValidateToken(string token, Guid UserId);
-        Task<List<UserDto>> GetUsers(string roleName);
+        Task<List<UserDto>> GetUsers(string[]? roles);
         Task<UserDto> GetUser(Guid userId);
+        Task<string?> UpdateUser(UserDto userDto);
         Task<bool> SendOtp(string phoneNumber);
         Task<LoginResponseDto> LoginWithOtp(OtpRequestDto otpRequestDto);
     }
