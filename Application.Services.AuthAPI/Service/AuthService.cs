@@ -54,26 +54,63 @@ namespace Application.Services.AuthAPI.Service
             return Task.FromResult<UserDto>(null);
         }
 
-        public async Task<List<UserDto>> GetUsers(string roleName)
+        public async Task<List<UserDto>> GetUsers(string[]? roles)
         {
             try
             {
-                // Check if the role exists
-                if (!await _roleManager.RoleExistsAsync(roleName))
+                List<ApplicationUser> matchedUsers;
+
+                if (roles == null || roles.Length == 0 || roles.All(string.IsNullOrEmpty))
                 {
-                    return new List<UserDto>();
+                    matchedUsers = _db.ApplicationUsers.ToList();
+                }
+                else
+                {
+                    var usersList = new List<ApplicationUser>();
+                    foreach (var role in roles)
+                    {
+                        if (string.IsNullOrEmpty(role)) continue;
+
+                        if (await _roleManager.RoleExistsAsync(role))
+                        {
+                            var usersInRole = await _userManager.GetUsersInRoleAsync(role);
+                            usersList.AddRange(usersInRole);
+                        }
+                    }
+                    matchedUsers = usersList.GroupBy(u => u.Id).Select(g => g.First()).ToList();
                 }
 
-                // Get users in the specified role
-                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                // Fetch roles for all matched users
+                var matchedUserIds = matchedUsers.Select(u => u.Id).ToList();
+                var userRoles = _db.UserRoles
+                    .Join(_db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, r.Name })
+                    .AsEnumerable() // Pull join into memory to avoid SQL Server compatibility level / OPENJSON issues
+                    .Where(ur => matchedUserIds.Contains(ur.UserId))
+                    .ToList();
 
-                // Map the users to UserDto
-                var userDtos = usersInRole.Select(user => _mapper.Map<UserDto>(user)).ToList();
+                var rolesByUser = userRoles
+                    .GroupBy(ur => ur.UserId)
+                    .ToDictionary(g => g.Key, g => (IList<string>)g.Select(ur => ur.Name).ToList());
+
+                var userDtos = matchedUsers.Select(user =>
+                {
+                    var dto = _mapper.Map<UserDto>(user);
+                    if (rolesByUser.TryGetValue(user.Id, out var rolesList))
+                    {
+                        dto.Roles = rolesList;
+                    }
+                    else
+                    {
+                        dto.Roles = new List<string>();
+                    }
+                    return dto;
+                }).ToList();
 
                 return userDtos;
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
                 // Log the exception if needed
                 return new List<UserDto>();
             }
@@ -121,9 +158,15 @@ namespace Application.Services.AuthAPI.Service
                 var result = await _userManager.CreateAsync(user, registrationRequestDto.Password);
                 if (result.Succeeded)
                 {
-                    if (!string.IsNullOrEmpty(registrationRequestDto.Role))
+                    if (registrationRequestDto.Roles != null && registrationRequestDto.Roles.Length > 0)
                     {
-                        await AssignRole(user.Email, registrationRequestDto.Role.ToUpper());
+                        foreach (var role in registrationRequestDto.Roles)
+                        {
+                            if (!string.IsNullOrEmpty(role))
+                            {
+                                await AssignRole(user.Email, role.ToUpper());
+                            }
+                        }
                     }
                     return "";
                 }
@@ -221,6 +264,73 @@ namespace Application.Services.AuthAPI.Service
             };
 
             return loginResponseDto;
+        }
+
+        public async Task<string?> UpdateUser(UserDto userDto)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userDto.Id);
+                if (user == null)
+                {
+                    return "User not found";
+                }
+
+                user.Name = userDto.Name;
+                user.Email = userDto.Email;
+                user.NormalizedEmail = userDto.Email?.ToUpper();
+                user.UserName = userDto.Email;
+                user.NormalizedUserName = userDto.Email?.ToUpper();
+                user.PhoneNumber = userDto.PhoneNumber;
+
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    return updateResult.Errors.FirstOrDefault()?.Description ?? "Failed to update user properties";
+                }
+
+                if (userDto.Roles != null)
+                {
+                    var currentRoles = await _userManager.GetRolesAsync(user);
+                    var newRoles = userDto.Roles.Where(r => !string.IsNullOrEmpty(r)).Select(r => r.ToUpper()).ToList();
+                    var currentRolesUpper = currentRoles.Select(r => r.ToUpper()).ToList();
+
+                    var rolesToRemove = currentRoles.Where(r => !newRoles.Contains(r.ToUpper())).ToList();
+                    var rolesToAdd = userDto.Roles.Where(r => !string.IsNullOrEmpty(r) && !currentRolesUpper.Contains(r.ToUpper())).ToList();
+
+                    if (rolesToRemove.Any())
+                    {
+                        var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                        if (!removeResult.Succeeded)
+                        {
+                            return removeResult.Errors.FirstOrDefault()?.Description ?? "Failed to remove old roles";
+                        }
+                    }
+
+                    if (rolesToAdd.Any())
+                    {
+                        foreach (var role in rolesToAdd)
+                        {
+                            var roleUpper = role.ToUpper();
+                            if (!await _roleManager.RoleExistsAsync(roleUpper))
+                            {
+                                await _roleManager.CreateAsync(new IdentityRole(roleUpper));
+                            }
+                            var addResult = await _userManager.AddToRoleAsync(user, roleUpper);
+                            if (!addResult.Succeeded)
+                            {
+                                return addResult.Errors.FirstOrDefault()?.Description ?? $"Failed to add role {role}";
+                            }
+                        }
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
         }
     }
 }
