@@ -1,4 +1,4 @@
-﻿namespace Application.Services.AuthAPI.Models.Dtos
+namespace Application.Services.AuthAPI.Models.Dtos
 {
     public class UserDto
     {
@@ -7,5 +7,6 @@
         public string Email { get; set; }
         public string PhoneNumber { get; set; }
         public IList<string>? Roles { get; set; }
+        public bool IsActive { get; set; }
     }
 }

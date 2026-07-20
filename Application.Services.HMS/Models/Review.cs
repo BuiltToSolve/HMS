@@ -9,7 +9,7 @@ public class Review
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid RoomId { get; set; }
-    public Room Room { get; set; }
+    public Room? Room { get; set; }
 
     [MaxLength(50)]
     public string? GuestName { get; set; }

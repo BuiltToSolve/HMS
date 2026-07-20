@@ -10,7 +10,7 @@ public class Booking
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid RoomId { get; set; }
-    public Room Room { get; set; }
+    public Room? Room { get; set; }
 
     [Required, MaxLength(50)]
     public string BookingReference { get; set; }

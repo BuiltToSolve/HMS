@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Script to run all three .NET services simultaneously with colored prefixes
+# bash ./run-all.sh
+
 
 cleanup() {
     # Remove the trap to avoid infinite loops when kill 0 triggers EXIT

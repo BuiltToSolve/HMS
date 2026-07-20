@@ -1,4 +1,4 @@
-﻿namespace Application.Services.AuthAPI.Models.Dtos
+namespace Application.Services.AuthAPI.Models.Dtos
 {
     public class RegistrationRequestDto
     {
@@ -7,5 +7,6 @@
         public string PhoneNumber { get; set; }
         public string Password { get; set; }
         public string[] Roles { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 }

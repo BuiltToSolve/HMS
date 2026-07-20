@@ -18,12 +18,20 @@ public class PantryOrderService : IPantryOrderService
 
     public async Task<IEnumerable<PantryOrder>> GetAllAsync()
     {
-        return await _context.PantryOrders.ToListAsync();
+        return await _context.PantryOrders
+            .Include(o => o.Booking)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.MenuItem)
+            .ToListAsync();
     }
 
     public async Task<PantryOrder?> GetByIdAsync(Guid id)
     {
-        return await _context.PantryOrders.FindAsync(id);
+        return await _context.PantryOrders
+            .Include(o => o.Booking)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.MenuItem)
+            .FirstOrDefaultAsync(o => o.Id == id);
     }
 
     public async Task<PantryOrder> CreateAsync(PantryOrder entity)

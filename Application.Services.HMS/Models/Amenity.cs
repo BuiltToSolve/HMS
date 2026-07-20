@@ -9,7 +9,7 @@ public class Amenity
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid RoomId { get; set; }
-    public Room Room { get; set; }
+    public Room? Room { get; set; }
 
     [MaxLength(250)]
     public string? AmenityName { get; set; }
