@@ -9,10 +9,10 @@ public class PantryOrderItem
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid PantryOrderId { get; set; }
-    public PantryOrder PantryOrder { get; set; }
+    public PantryOrder? PantryOrder { get; set; }
 
     public Guid MenuItemId { get; set; }
-    public MenuItem MenuItem { get; set; }
+    public MenuItem? MenuItem { get; set; }
 
     public int Quantity { get; set; }
 

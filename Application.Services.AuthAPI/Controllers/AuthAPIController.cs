@@ -40,7 +40,7 @@ namespace Application.Services.AuthAPI.Controllers
             if (loginResponse.User == null)
             {
                 _response.Success = false;
-                _response.Message = "Username or Password is incorrect";
+                _response.Message = loginResponse.Message ?? "Username or Password is incorrect";
                 return Ok(_response);
             }
             _response.Result = loginResponse;
@@ -68,7 +68,7 @@ namespace Application.Services.AuthAPI.Controllers
             if (loginResponse.User == null)
             {
                 _response.Success = false;
-                _response.Message = "Invalid OTP";
+                _response.Message = loginResponse.Message ?? "Invalid OTP";
                 return Ok(_response);
             }
             _response.Result = loginResponse;
@@ -173,6 +173,20 @@ namespace Application.Services.AuthAPI.Controllers
             }
             _response.Result = model.Id;
             _response.Message = "Successfully Updated User";
+            return Ok(_response);
+        }
+
+        [HttpDelete("deleteuser/{userId}")]
+        public async Task<IActionResult> DeleteUser(Guid userId)
+        {
+            var success = await _authService.DeleteUser(userId);
+            if (!success)
+            {
+                _response.Success = false;
+                _response.Message = "Failed to delete user";
+                return Ok(_response);
+            }
+            _response.Message = "Successfully Deleted User";
             return Ok(_response);
         }
     }

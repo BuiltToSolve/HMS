@@ -10,7 +10,7 @@ public class RoomGallery
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid RoomId { get; set; }
-    public Room Room { get; set; }
+    public Room? Room { get; set; }
 
     [MaxLength(500)]
     public string? ImageUrl { get; set; }

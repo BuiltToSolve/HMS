@@ -121,9 +121,17 @@ namespace Application.Services.AuthAPI.Service
             var user = _db.ApplicationUsers.FirstOrDefault(u => u.Email.ToLower() == loginRequestDto.Email.ToLower());
             bool isValid = await _userManager.CheckPasswordAsync(user, loginRequestDto.Password);
             var roles = await _userManager.GetRolesAsync(user);
-            if (user == null || isValid == false)
+            if (user == null)
             {
-                return new LoginResponseDto { User = null, Token = "" };
+                return new LoginResponseDto { User = null, Token = "", Message = "Username or Password is incorrect" };
+            }
+            if (!user.IsActive)
+            {
+                return new LoginResponseDto { User = null, Token = "", Message = "Account has been suspended. Please contact support" };
+            }
+            if (!isValid)
+            {
+                return new LoginResponseDto { User = null, Token = "", Message = "Username or Password is incorrect" };
             }
             var claims = new List<Claim>
             {
@@ -150,7 +158,8 @@ namespace Application.Services.AuthAPI.Service
                 Name = registrationRequestDto.Name,
                 UserName = registrationRequestDto.Email,
                 Email = registrationRequestDto.Email,
-                PhoneNumber = registrationRequestDto.PhoneNumber
+                PhoneNumber = registrationRequestDto.PhoneNumber,
+                IsActive = registrationRequestDto.IsActive
             };
 
             try
@@ -194,6 +203,10 @@ namespace Application.Services.AuthAPI.Service
                 //var userId = principal.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value;
 
                 var user = _db.ApplicationUsers.FirstOrDefault(u => u.Id == UserId.ToString());
+                if (user == null || !user.IsActive)
+                {
+                    return null;
+                }
                 var roles = await _userManager.GetRolesAsync(user);
 
                 LoginResponseDto loginResponseDto = new()
@@ -236,10 +249,26 @@ namespace Application.Services.AuthAPI.Service
         {
             var user = _db.ApplicationUsers.FirstOrDefault(u => u.PhoneNumber == otpRequestDto.PhoneNumber);
             
-            // Validate user, OTP value, and expiration date
-            if (user == null || user.Otp != otpRequestDto.Otp || user.OtpExpiryTime < DateTime.UtcNow)
+            if (user == null)
             {
-                return new LoginResponseDto { User = null, Token = "" };
+                return new LoginResponseDto { User = null, Token = "", Message = "Invalid OTP" };
+            }
+            
+            if (!user.IsActive)
+            {
+                return new LoginResponseDto { User = null, Token = "", Message = "Account has been suspended. Please contact support" };
+            }
+
+            // Validate OTP value
+            if (user.Otp != otpRequestDto.Otp)
+            {
+                return new LoginResponseDto { User = null, Token = "", Message = "Invalid OTP" };
+            }
+
+            // Validate expiration date
+            if (user.OtpExpiryTime < DateTime.UtcNow)
+            {
+                return new LoginResponseDto { User = null, Token = "", Message = "OTP has expired" };
             }
 
             // Clear the OTP upon successful login
@@ -282,6 +311,7 @@ namespace Application.Services.AuthAPI.Service
                 user.UserName = userDto.Email;
                 user.NormalizedUserName = userDto.Email?.ToUpper();
                 user.PhoneNumber = userDto.PhoneNumber;
+                user.IsActive = userDto.IsActive;
 
                 var updateResult = await _userManager.UpdateAsync(user);
                 if (!updateResult.Succeeded)
@@ -330,6 +360,22 @@ namespace Application.Services.AuthAPI.Service
             catch (Exception ex)
             {
                 return ex.Message;
+            }
+        }
+
+        public async Task<bool> DeleteUser(Guid userId)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId.ToString());
+                if (user == null) return false;
+
+                var result = await _userManager.DeleteAsync(user);
+                return result.Succeeded;
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
     }

@@ -7,5 +7,6 @@ namespace Application.Services.AuthAPI.Models
         public string Name { get; set; }
         public string? Otp { get; set; }
         public DateTime? OtpExpiryTime { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 }
