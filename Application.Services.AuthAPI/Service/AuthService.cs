@@ -6,6 +6,7 @@ using Application.Services.AuthAPI.Models.Dtos;
 using Application.Services.AuthAPI.Service.IService;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Application.Services.AuthAPI.Service
 {
@@ -370,7 +371,35 @@ namespace Application.Services.AuthAPI.Service
                 var user = await _userManager.FindByIdAsync(userId.ToString());
                 if (user == null) return false;
 
-                var result = await _userManager.DeleteAsync(user);
+                user.Deleted = true;
+                user.IsActive = false;
+                var result = await _userManager.UpdateAsync(user);
+
+                if (result.Succeeded)
+                {
+                    await _db.Database.ExecuteSqlRawAsync(@"
+                        UPDATE PantryOrderItems 
+                        SET Deleted = 1 
+                        WHERE PantryOrderId IN (
+                            SELECT Id FROM PantryOrders 
+                            WHERE BookingId IN (
+                                SELECT Id FROM Bookings WHERE UserId = {0}
+                            )
+                        )", userId);
+
+                    await _db.Database.ExecuteSqlRawAsync(@"
+                        UPDATE PantryOrders 
+                        SET Deleted = 1 
+                        WHERE BookingId IN (
+                            SELECT Id FROM Bookings WHERE UserId = {0}
+                        )", userId);
+
+                    await _db.Database.ExecuteSqlRawAsync(@"
+                        UPDATE Bookings 
+                        SET Deleted = 1 
+                        WHERE UserId = {0}", userId);
+                }
+
                 return result.Succeeded;
             }
             catch (Exception)

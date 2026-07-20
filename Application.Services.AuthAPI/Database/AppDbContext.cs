@@ -51,6 +51,9 @@ namespace Application.Services.AuthAPI.Database
                 RoleId = adminRoleId,
                 UserId = adminUser.Id
             });
+
+            // Add global query filter for soft-deleted users
+            modelBuilder.Entity<ApplicationUser>().HasQueryFilter(u => !u.Deleted);
         }
     }
 }
