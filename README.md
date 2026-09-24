@@ -25,46 +25,6 @@ A distributed, production-ready microservices backend engineered for modern hosp
 
 ---
 
-## 🏛 System Architecture
-
-The solution adopts a decoupled **Microservices Architecture** with an **API Gateway Pattern (Layer 7 Reverse Proxy)** serving as the unified ingress point for client applications.
-
-```mermaid
-flowchart TD
-    subgraph Clients["Clients & Frontends"]
-        Web[Web Application / Admin Portal]
-        Mobile[Guest Mobile App]
-    end
-
-    subgraph GatewayLayer["API Gateway Layer (:5000)"]
-        Gateway["Ocelot API Gateway<br/>(Application.APIGateway)<br/>• Reverse Proxy<br/>• Upstream/Downstream Route Dispatching<br/>• Global CORS Policy<br/>• Route Priority Resolution"]
-    end
-
-    subgraph Microservices["Microservices Domain Layer"]
-        AuthService["Auth API Microservice (:5043)<br/>(Application.Services.AuthAPI)<br/>• ASP.NET Identity Core<br/>• JWT Bearer Token Issuance<br/>• Phone OTP Authentication<br/>• RBAC / Claims Generation<br/>• User Soft-Delete Cascade Engine"]
-        
-        HMSService["HMS Core Microservice (:5174)<br/>(Application.Services.HMS)<br/>• Room Inventory & Categories<br/>• Dynamic Surge Pricing Engine<br/>• Room Reservation & Booking<br/>• Pantry / F&B Ordering POS<br/>• Room Amenities & Photo Galleries<br/>• Guest Reviews & Corporate Leads"]
-    end
-
-    subgraph ServerlessLayer["Background & Serverless Extensibility"]
-        Functions["Azure Functions v4 Host<br/>(Application.csproj)<br/>• Background Jobs / Triggers"]
-    end
-
-    subgraph Persistence["Persistence & Storage Layer"]
-        Database[("Microsoft SQL Server<br/>(AppDbContext)<br/>• Code-First Migrations<br/>• Global Soft Delete Filters<br/>• Decimal Precision (10,2)<br/>• Referential Cascades")]
-    end
-
-    Web -->|HTTP / REST| Gateway
-    Mobile -->|HTTP / REST| Gateway
-
-    Gateway -->|/api/auth/* (Priority: 2)| AuthService
-    Gateway -->|/api/* (Priority: 1)| HMSService
-
-    AuthService -->|EF Core 8 / T-SQL| Database
-    HMSService -->|EF Core 8 / LINQ| Database
-    Functions -.->|Async Tasks| Database
-```
-
 ### Architectural Highlights
 1. **API Gateway Ingress**: Clients interact exclusively with the Gateway on port `5000`. The gateway handles route rewriting, upstream-downstream path mapping, and CORS negotiation before dispatching traffic.
 2. **Autonomous Domain Boundaries**: Each microservice maintains its own dependency injection container, middleware pipeline, service interfaces, and object mapping layer.
